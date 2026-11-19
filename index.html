@@ -1,0 +1,1287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Klyro AI — Google & Wikipedia Search Assistant</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #000000;
+      color: #f8fafc;
+    }
+    .klyro-scroll::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .klyro-scroll::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .klyro-scroll::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 9999px;
+    }
+    .klyro-scroll::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+    @keyframes geminiSparkle {
+      0% { transform: rotate(0deg) scale(1); filter: hue-rotate(0deg); }
+      50% { transform: rotate(180deg) scale(1.18); filter: hue-rotate(45deg); }
+      100% { transform: rotate(360deg) scale(1); filter: hue-rotate(0deg); }
+    }
+    @keyframes geminiShimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    @keyframes fadeSlideUp {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .gemini-sparkle {
+      animation: geminiSparkle 2.4s ease-in-out infinite;
+    }
+    .gemini-shimmer-bar {
+      background: linear-gradient(90deg, #18181b 0%, #1e3a8a 25%, #6d28d9 50%, #0284c7 75%, #18181b 100%);
+      background-size: 200% 100%;
+      animation: geminiShimmer 1.8s linear infinite;
+    }
+    .gemini-glow-border {
+      position: relative;
+      background: linear-gradient(#09090b, #09090b) padding-box,
+                  linear-gradient(120deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6) border-box;
+      border: 1px solid transparent;
+    }
+    .answer-enter {
+      animation: fadeSlideUp 0.35s ease-out forwards;
+    }
+    @keyframes btnTapBurst {
+      0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+      45% { transform: scale(0.94); box-shadow: 0 0 0 10px rgba(139, 92, 246, 0.25); }
+      100% { transform: scale(1); box-shadow: 0 0 0 18px rgba(6, 182, 212, 0); }
+    }
+    .btn-tap-burst {
+      animation: btnTapBurst 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+      background: linear-gradient(135deg, #2563eb, #7c3aed, #06b6d4) !important;
+    }
+    .search-focus-glow:focus-within {
+      background: linear-gradient(#09090b, #09090b) padding-box,
+                  linear-gradient(120deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6) border-box;
+      border-color: transparent !important;
+      box-shadow: 0 0 24px -6px rgba(99, 102, 241, 0.35);
+    }
+    @keyframes auraFlow {
+      0% { background-position: 0% 50%; opacity: 0.65; }
+      50% { background-position: 100% 50%; opacity: 1; }
+      100% { background-position: 0% 50%; opacity: 0.65; }
+    }
+    .klyro-aura-line {
+      height: 2px;
+      background: linear-gradient(90deg, transparent, #3b82f6, #8b5cf6, #06b6d4, transparent);
+      background-size: 200% 100%;
+      animation: auraFlow 3.2s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-black text-zinc-100 min-h-screen flex flex-col antialiased">
+
+  <!-- App Shell -->
+  <div class="flex flex-1 min-h-screen bg-black">
+
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-black/70 z-30 hidden lg:hidden"></div>
+
+    <!-- Left Sidebar (History) -->
+    <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-40 w-64 bg-zinc-950 border-r border-zinc-800 flex flex-col transform -translate-x-full lg:translate-x-0 transition-transform duration-200 ease-in-out">
+      <div class="h-16 px-4 flex items-center justify-between border-b border-zinc-900">
+        <button id="sidebar-home-btn" type="button" class="flex items-center gap-2.5 text-left hover:opacity-90 transition">
+          <div class="w-8 h-8 rounded-xl bg-blue-600 flex items-center justify-center shadow-sm">
+            <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"/>
+            </svg>
+          </div>
+          <span class="font-semibold text-base tracking-tight text-white">Klyro AI</span>
+        </button>
+        <button id="close-sidebar-btn" type="button" class="lg:hidden p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-900" aria-label="Close sidebar">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-3">
+        <button id="new-chat-btn" type="button" class="w-full flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-zinc-100 text-sm font-medium transition">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+          New Question
+        </button>
+      </div>
+
+      <div class="px-4 py-1.5 flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Recent Searches</span>
+        <button id="clear-history-btn" type="button" class="text-xs text-zinc-500 hover:text-red-400 transition hidden">Clear</button>
+      </div>
+
+      <div id="history-list" class="flex-1 overflow-y-auto klyro-scroll px-2 pb-4 space-y-1">
+        <p class="px-3 py-4 text-xs text-zinc-500 text-center">Your asked questions will appear here.</p>
+      </div>
+
+      <!-- Sidebar Footer: Source Status -->
+      <div class="p-3 border-t border-zinc-900 bg-zinc-950">
+        <div class="rounded-xl border border-zinc-800 bg-zinc-900/70 p-2.5 text-xs text-zinc-400 space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span class="flex items-center gap-1.5 font-medium text-zinc-300">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              Wikipedia API
+            </span>
+            <span class="text-[11px] text-emerald-400 font-medium">Live</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="flex items-center gap-1.5 font-medium text-zinc-300">
+              <span id="google-status-dot" class="w-2 h-2 rounded-full bg-blue-500"></span>
+              Google Search
+            </span>
+            <span id="google-status-label" class="text-[11px] text-blue-400 font-medium">Ready</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0 bg-black">
+
+      <!-- Top Header -->
+      <header class="h-16 px-4 sm:px-6 border-b border-zinc-800 bg-black flex items-center justify-between sticky top-0 z-20">
+        <div class="flex items-center gap-3">
+          <button id="open-sidebar-btn" type="button" class="lg:hidden p-2 -ml-2 rounded-lg text-zinc-400 hover:bg-zinc-900" aria-label="Open menu">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+          </button>
+          <div class="flex items-center gap-2 lg:hidden">
+            <div class="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center">
+              <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"/></svg>
+            </div>
+            <span class="font-semibold text-white">Klyro AI</span>
+          </div>
+
+          <!-- Home Button -->
+          <button id="home-btn" type="button" class="hidden items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-200 transition" title="Go to Home">
+            <svg class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>Home</span>
+          </button>
+
+          <!-- Search History Button -->
+          <button id="history-modal-btn" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-200 transition" title="View Search History">
+            <svg class="w-3.5 h-3.5 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>History</span>
+            <span id="history-count-badge" class="hidden px-1.5 py-0.5 rounded-full bg-blue-600/30 text-blue-300 text-[10px] font-semibold">0</span>
+          </button>
+
+
+        </div>
+
+        <!-- Right Controls: Focus Sound + Google Account -->
+        <div class="flex items-center gap-2 relative">
+          <!-- Focus Soundscape Pill -->
+          <div class="relative">
+            <button id="sound-btn" type="button" class="flex items-center gap-2 px-3 py-2 rounded-full border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-300 transition" title="Focus Soundscape">
+              <svg id="sound-icon-off" class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/><path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/></svg>
+              <svg id="sound-icon-on" class="w-4 h-4 text-blue-400 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+              <span id="sound-label" class="hidden md:inline">Focus Sound</span>
+            </button>
+
+            <div id="sound-dropdown" class="hidden absolute right-0 top-12 w-64 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl p-4 z-50 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-white">Focus Soundscape</span>
+                <span id="sound-status-badge" class="text-[11px] px-2 py-0.5 rounded-full bg-zinc-900 text-zinc-400">Off</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button type="button" data-sound="off" class="sound-mode-btn px-2.5 py-2 rounded-xl border border-blue-500/60 bg-blue-600/20 text-xs font-medium text-white transition">Off</button>
+                <button type="button" data-sound="rain" class="sound-mode-btn px-2.5 py-2 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-300 transition">Rain</button>
+                <button type="button" data-sound="whitenoise" class="sound-mode-btn px-2.5 py-2 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-300 transition">White Noise</button>
+                <button type="button" data-sound="pulse" class="sound-mode-btn px-2.5 py-2 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-300 transition">Soft Pulse</button>
+              </div>
+              <div class="space-y-1 pt-1 border-t border-zinc-800">
+                <div class="flex items-center justify-between text-[11px] text-zinc-400">
+                  <span>Volume</span>
+                  <span id="sound-vol-text">35%</span>
+                </div>
+                <input id="sound-volume" type="range" min="5" max="100" value="35" class="w-full accent-blue-500 cursor-pointer" />
+              </div>
+            </div>
+          </div>
+          <button id="google-signin-btn" type="button" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-200 transition">
+            <svg class="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+              <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+              <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+              <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+            </svg>
+            <span id="google-btn-text">Add Google Account</span>
+          </button>
+
+          <!-- Signed-in Profile Pill (hidden by default) -->
+          <button id="google-profile-btn" type="button" class="hidden items-center gap-2 pl-1 pr-2.5 py-1 rounded-full border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 transition">
+            <div id="user-avatar" class="w-6 h-6 rounded-full bg-blue-600 text-white text-[11px] font-semibold flex items-center justify-center">G</div>
+            <div class="text-left hidden sm:block">
+              <div id="user-name-display" class="text-xs font-semibold text-white leading-tight">User</div>
+              <div id="user-email-display" class="text-[11px] text-zinc-400 leading-tight">user@gmail.com</div>
+            </div>
+            <svg class="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+
+          <!-- Profile Dropdown -->
+          <div id="profile-dropdown" class="hidden absolute right-0 top-12 w-72 rounded-2xl border border-zinc-800 bg-zinc-950 shadow-2xl p-4 z-50">
+            <div class="flex items-center gap-3 pb-3 border-b border-zinc-800">
+              <div id="dropdown-avatar" class="w-10 h-10 rounded-full bg-blue-600 text-white font-semibold flex items-center justify-center">G</div>
+              <div class="min-w-0">
+                <p id="dropdown-name" class="text-sm font-semibold text-white truncate">Google User</p>
+                <p id="dropdown-email" class="text-xs text-zinc-400 truncate">user@gmail.com</p>
+              </div>
+            </div>
+            <div class="py-2 space-y-1">
+              <button id="open-api-settings-btn" type="button" class="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-zinc-900 transition">
+                <span>Google Search API Settings</span>
+                <span class="text-zinc-500">Configure</span>
+              </button>
+              <button id="switch-account-btn" type="button" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-zinc-200 hover:bg-zinc-900 transition">
+                Switch Google Account
+              </button>
+              <button id="signout-btn" type="button" class="w-full text-left px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:bg-red-950/40 transition">
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+
+
+      <!-- Main Workspace -->
+      <main id="chat-container" class="flex-1 overflow-y-auto klyro-scroll px-4 sm:px-6 py-6 bg-black">
+        <div class="max-w-4xl mx-auto">
+
+          <!-- Welcome Screen -->
+          <div id="welcome-screen" class="py-10 sm:py-16 text-center space-y-6">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-zinc-800 bg-zinc-950 text-xs font-medium text-zinc-300">
+              <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+              Klyro AI
+            </div>
+
+            <div class="space-y-3">
+              <h1 id="welcome-title" class="text-3xl sm:text-4xl font-bold tracking-tight text-white">
+                Ask Klyro AI anything
+              </h1>
+              <p class="text-sm sm:text-base text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                Fast, focused, and distraction-free. Klyro AI delivers clear answers in seconds so you can learn, explore, and stay in your flow.
+              </p>
+            </div>
+          </div>
+
+          <!-- Conversation Messages -->
+          <div id="messages-list" class="space-y-8 pb-6 hidden"></div>
+
+        </div>
+      </main>
+
+      <!-- Bottom Input Bar -->
+      <div class="relative border-t border-zinc-900 bg-black px-4 sm:px-6 pb-4 pt-3">
+        <!-- Cool Animated Aura Strip Above Search -->
+        <div class="max-w-4xl mx-auto mb-2.5">
+          <div class="klyro-aura-line rounded-full mb-2"></div>
+          <div class="flex items-center justify-center gap-2 text-[11px] text-zinc-400">
+            <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-400 animate-ping"></span>
+            <span class="bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-300 bg-clip-text text-transparent font-medium">Klyro AI Ready &bull; Ask any question</span>
+          </div>
+        </div>
+
+        <div class="max-w-4xl mx-auto space-y-2">
+          <form id="ask-form" class="relative flex items-center gap-2 rounded-2xl border border-zinc-800 bg-zinc-950 px-4 py-2.5 search-focus-glow transition">
+            <input
+              id="question-input"
+              type="text"
+              autocomplete="off"
+              placeholder="Ask any question..."
+              class="flex-1 bg-transparent text-sm sm:text-base text-white placeholder-zinc-500 focus:outline-none"
+            />
+            <button
+              id="send-btn"
+              type="submit"
+              class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-800 disabled:text-zinc-500 text-white text-sm font-medium flex items-center gap-1.5 transition shrink-0"
+            >
+              <span>Ask</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-7-7l7 7-7 7"/></svg>
+            </button>
+          </form>
+          <p class="mt-2 text-[11px] text-center text-zinc-500">
+            Connect your Google account in the top right to save your search history.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Google Account Sign-In & API Modal -->
+  <div id="google-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-[2px] p-4">
+    <div class="w-full max-w-md rounded-2xl bg-zinc-950 border border-zinc-800 shadow-2xl overflow-hidden">
+      <div class="px-6 py-5 border-b border-zinc-800 flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <svg class="w-5 h-5" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+            <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/>
+            <path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/>
+            <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/>
+          </svg>
+          <h2 class="text-base font-semibold text-white">Connect Google Account</h2>
+        </div>
+        <button id="close-modal-btn" type="button" class="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200" aria-label="Close modal">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <form id="google-account-form" class="p-6 space-y-4">
+        <div class="space-y-1.5">
+          <label for="google-name-input" class="block text-xs font-medium text-zinc-300">Full Name</label>
+          <input id="google-name-input" type="text" required placeholder="e.g. Aarav Patel" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500" />
+        </div>
+
+        <div class="space-y-1.5">
+          <label for="google-email-input" class="block text-xs font-medium text-zinc-300">Gmail / Google Email</label>
+          <input id="google-email-input" type="email" required placeholder="e.g. aarav@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500" />
+        </div>
+
+
+
+        <div class="pt-1">
+          <button id="toggle-advanced-api" type="button" class="text-xs font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1">
+            <span>Optional: Add Google Custom Search API Key</span>
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+          </button>
+
+          <div id="advanced-api-fields" class="hidden mt-3 space-y-3 bg-zinc-900 p-3.5 rounded-xl border border-zinc-800">
+            <p class="text-[11px] text-zinc-400 leading-relaxed">
+              Add a Google Programmable Search Engine key &amp; CX ID to pull live web snippets directly inside Klyro AI.
+            </p>
+            <div class="space-y-1">
+              <label for="google-api-key" class="block text-[11px] font-medium text-zinc-300">Google Search API Key</label>
+              <input id="google-api-key" type="password" placeholder="AIza..." class="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-950 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div class="space-y-1">
+              <label for="google-cx-id" class="block text-[11px] font-medium text-zinc-300">Search Engine ID (CX)</label>
+              <input id="google-cx-id" type="text" placeholder="e.g. 0123456789abcdef" class="w-full px-3 py-2 rounded-lg border border-zinc-800 bg-zinc-950 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-2">
+          <button id="cancel-modal-btn" type="button" class="px-4 py-2 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-300 transition">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium transition">
+            Continue with Google
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Search History Modal -->
+  <div id="history-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/75 backdrop-blur-[2px] p-4">
+    <div class="w-full max-w-lg rounded-2xl bg-zinc-950 border border-zinc-800 shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
+      <div class="px-5 py-4 border-b border-zinc-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <h2 class="text-sm font-semibold text-white">Search History</h2>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="modal-clear-history-btn" type="button" class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg hover:bg-red-950/30 transition hidden">Clear All</button>
+          <button id="close-history-modal-btn" type="button" class="p-1.5 rounded-lg text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200" aria-label="Close history modal">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="history-modal-list" class="p-4 overflow-y-auto klyro-scroll space-y-2">
+        <p class="py-8 text-xs text-zinc-500 text-center">No search history yet. Ask a question to get started.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="fixed bottom-5 right-5 z-50 hidden px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-white text-xs font-medium shadow-lg"></div>
+
+  <script>
+    (function () {
+      const STORAGE_KEYS = {
+        account: 'klyro_google_account_v1',
+        historyPrefix: 'klyro_history_v1_'
+      };
+
+      const state = {
+        sourceMode: 'both', // 'both' | 'google' | 'wikipedia'
+        account: null,      // { name, email, apiKey, cx }
+        history: [],        // [{ id, question, timestamp, data }]
+        isLoading: false
+      };
+
+      // DOM Elements
+      const sidebar = document.getElementById('sidebar');
+      const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+      const openSidebarBtn = document.getElementById('open-sidebar-btn');
+      const closeSidebarBtn = document.getElementById('close-sidebar-btn');
+      const homeBtn = document.getElementById('home-btn');
+      const historyModalBtn = document.getElementById('history-modal-btn');
+      const historyCountBadge = document.getElementById('history-count-badge');
+      const historyModal = document.getElementById('history-modal');
+      const closeHistoryModalBtn = document.getElementById('close-history-modal-btn');
+      const modalClearHistoryBtn = document.getElementById('modal-clear-history-btn');
+      const historyModalList = document.getElementById('history-modal-list');
+      const sidebarHomeBtn = document.getElementById('sidebar-home-btn');
+      const newChatBtn = document.getElementById('new-chat-btn');
+      const clearHistoryBtn = document.getElementById('clear-history-btn');
+      const historyList = document.getElementById('history-list');
+
+      const sourceTabs = document.querySelectorAll('.source-tab');
+      const welcomeScreen = document.getElementById('welcome-screen');
+      const welcomeTitle = document.getElementById('welcome-title');
+      const messagesList = document.getElementById('messages-list');
+      const chatContainer = document.getElementById('chat-container');
+
+      const askForm = document.getElementById('ask-form');
+      const questionInput = document.getElementById('question-input');
+      const sendBtn = document.getElementById('send-btn');
+
+      const googleSigninBtn = document.getElementById('google-signin-btn');
+      const googleProfileBtn = document.getElementById('google-profile-btn');
+      const profileDropdown = document.getElementById('profile-dropdown');
+      const userAvatar = document.getElementById('user-avatar');
+      const userNameDisplay = document.getElementById('user-name-display');
+      const userEmailDisplay = document.getElementById('user-email-display');
+      const dropdownAvatar = document.getElementById('dropdown-avatar');
+      const dropdownName = document.getElementById('dropdown-name');
+      const dropdownEmail = document.getElementById('dropdown-email');
+      const openApiSettingsBtn = document.getElementById('open-api-settings-btn');
+      const switchAccountBtn = document.getElementById('switch-account-btn');
+      const signoutBtn = document.getElementById('signout-btn');
+
+      const googleModal = document.getElementById('google-modal');
+      const closeModalBtn = document.getElementById('close-modal-btn');
+      const cancelModalBtn = document.getElementById('cancel-modal-btn');
+      const googleAccountForm = document.getElementById('google-account-form');
+      const googleNameInput = document.getElementById('google-name-input');
+      const googleEmailInput = document.getElementById('google-email-input');
+      const toggleAdvancedApi = document.getElementById('toggle-advanced-api');
+      const advancedApiFields = document.getElementById('advanced-api-fields');
+      const googleApiKeyInput = document.getElementById('google-api-key');
+      const googleCxInput = document.getElementById('google-cx-id');
+
+      const googleStatusDot = document.getElementById('google-status-dot');
+      const googleStatusLabel = document.getElementById('google-status-label');
+      const toastEl = document.getElementById('toast');
+
+      function safeGetStorage(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function safeSetStorage(key, value) {
+        try {
+          localStorage.setItem(key, JSON.stringify(value));
+        } catch (e) {
+          // Ignore storage quota or sandbox errors
+        }
+      }
+
+      function showToast(msg) {
+        toastEl.textContent = msg;
+        toastEl.classList.remove('hidden');
+        clearTimeout(showToast._timer);
+        showToast._timer = setTimeout(() => {
+          toastEl.classList.add('hidden');
+        }, 2600);
+      }
+
+      function escapeHtml(str) {
+        return String(str || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+
+      function getInitials(name) {
+        if (!name) return 'G';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+
+      function getHistoryKey() {
+        const email = state.account && state.account.email ? state.account.email.toLowerCase() : 'guest';
+        return STORAGE_KEYS.historyPrefix + email;
+      }
+
+      function loadAccountAndHistory() {
+        const savedAccount = safeGetStorage(STORAGE_KEYS.account);
+        if (savedAccount && savedAccount.email) {
+          state.account = savedAccount;
+        }
+        const savedHistory = safeGetStorage(getHistoryKey());
+        state.history = Array.isArray(savedHistory) ? savedHistory : [];
+        renderAccountUI();
+        renderHistory();
+      }
+
+      function renderAccountUI() {
+        if (state.account && state.account.email) {
+          const initials = getInitials(state.account.name || state.account.email);
+          googleSigninBtn.classList.add('hidden');
+          googleProfileBtn.classList.remove('hidden');
+          googleProfileBtn.classList.add('flex');
+
+          userAvatar.textContent = initials;
+          userNameDisplay.textContent = state.account.name || 'Google User';
+          userEmailDisplay.textContent = state.account.email;
+
+          dropdownAvatar.textContent = initials;
+          dropdownName.textContent = state.account.name || 'Google User';
+          dropdownEmail.textContent = state.account.email;
+
+          welcomeTitle.textContent = `Hi ${state.account.name.split(' ')[0]}, ask Klyro AI anything`;
+
+          if (state.account.apiKey && state.account.cx) {
+            googleStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+            googleStatusLabel.textContent = 'Live API';
+            googleStatusLabel.className = 'text-[11px] text-emerald-400 font-medium';
+          } else {
+            googleStatusDot.className = 'w-2 h-2 rounded-full bg-blue-500';
+            googleStatusLabel.textContent = 'Connected';
+            googleStatusLabel.className = 'text-[11px] text-blue-400 font-medium';
+          }
+        } else {
+          googleSigninBtn.classList.remove('hidden');
+          googleProfileBtn.classList.add('hidden');
+          googleProfileBtn.classList.remove('flex');
+          profileDropdown.classList.add('hidden');
+          welcomeTitle.textContent = 'Ask Klyro AI anything';
+          googleStatusDot.className = 'w-2 h-2 rounded-full bg-blue-500';
+          googleStatusLabel.textContent = 'Ready';
+          googleStatusLabel.className = 'text-[11px] text-blue-400 font-medium';
+        }
+      }
+
+      function renderHistoryModal() {
+        if (!state.history.length) {
+          modalClearHistoryBtn.classList.add('hidden');
+          historyModalList.innerHTML = '<p class="py-8 text-xs text-zinc-500 text-center">No search history yet. Ask a question to get started.</p>';
+          return;
+        }
+        modalClearHistoryBtn.classList.remove('hidden');
+        historyModalList.innerHTML = state.history.map((item) => {
+          const timeStr = item.timestamp ? new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+          return `
+            <button type="button" data-modal-history-id="${escapeHtml(item.id)}" class="modal-history-item w-full text-left px-3.5 py-2.5 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-900 hover:border-blue-500/50 transition flex items-center justify-between gap-3">
+              <span class="text-xs font-medium text-zinc-200 truncate">${escapeHtml(item.question)}</span>
+              <span class="text-[11px] text-zinc-500 shrink-0">${escapeHtml(timeStr)}</span>
+            </button>
+          `;
+        }).join('');
+
+        historyModalList.querySelectorAll('.modal-history-item').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-modal-history-id');
+            const found = state.history.find((h) => h.id === id);
+            if (found) {
+              welcomeScreen.classList.add('hidden');
+              messagesList.classList.remove('hidden');
+              homeBtn.classList.remove('hidden');
+              homeBtn.classList.add('inline-flex');
+              messagesList.innerHTML = '';
+              appendAnswerBlock(found.question, found.data);
+              historyModal.classList.add('hidden');
+              historyModal.classList.remove('flex');
+            }
+          });
+        });
+      }
+
+      function renderHistory() {
+        if (state.history.length) {
+          historyCountBadge.textContent = String(state.history.length);
+          historyCountBadge.classList.remove('hidden');
+        } else {
+          historyCountBadge.classList.add('hidden');
+        }
+        renderHistoryModal();
+
+        if (!state.history.length) {
+          clearHistoryBtn.classList.add('hidden');
+          historyList.innerHTML = '<p class="px-3 py-4 text-xs text-zinc-500 text-center">Your asked questions will appear here.</p>';
+          return;
+        }
+        clearHistoryBtn.classList.remove('hidden');
+        historyList.innerHTML = state.history.map((item) => `
+          <button type="button" data-history-id="${escapeHtml(item.id)}" class="history-item w-full text-left px-3 py-2 rounded-xl hover:bg-zinc-900 text-xs text-zinc-300 truncate transition flex items-center gap-2">
+            <svg class="w-3.5 h-3.5 text-zinc-500 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/></svg>
+            <span class="truncate">${escapeHtml(item.question)}</span>
+          </button>
+        `).join('');
+
+        historyList.querySelectorAll('.history-item').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const id = btn.getAttribute('data-history-id');
+            const found = state.history.find((h) => h.id === id);
+            if (found) {
+              welcomeScreen.classList.add('hidden');
+              messagesList.classList.remove('hidden');
+              homeBtn.classList.remove('hidden');
+              homeBtn.classList.add('inline-flex');
+              messagesList.innerHTML = '';
+              appendAnswerBlock(found.question, found.data);
+              closeSidebar();
+            }
+          });
+        });
+      }
+
+      function setSourceMode(mode) {
+        state.sourceMode = mode;
+        sourceTabs.forEach((tab) => {
+          const isMatch = tab.getAttribute('data-source') === mode;
+          if (tab.closest('.sm\\:hidden')) {
+            tab.className = isMatch
+              ? 'source-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white whitespace-nowrap'
+              : 'source-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-900 text-zinc-400 whitespace-nowrap';
+          } else {
+            tab.className = isMatch
+              ? 'source-tab px-3 py-1.5 rounded-lg text-xs font-medium bg-zinc-800 text-white shadow-xs transition'
+              : 'source-tab px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-400 hover:text-white transition';
+          }
+        });
+      }
+
+      function openSidebar() {
+        sidebar.classList.remove('-translate-x-full');
+        sidebarBackdrop.classList.remove('hidden');
+      }
+
+      function closeSidebar() {
+        sidebar.classList.add('-translate-x-full');
+        sidebarBackdrop.classList.add('hidden');
+      }
+
+      function openGoogleModal(showApi = false) {
+        profileDropdown.classList.add('hidden');
+        if (state.account) {
+          googleNameInput.value = state.account.name || '';
+          googleEmailInput.value = state.account.email || '';
+          googleApiKeyInput.value = state.account.apiKey || '';
+          googleCxInput.value = state.account.cx || '';
+        } else {
+          googleNameInput.value = '';
+          googleEmailInput.value = '';
+          googleApiKeyInput.value = '';
+          googleCxInput.value = '';
+        }
+        if (showApi) {
+          advancedApiFields.classList.remove('hidden');
+        }
+        googleModal.classList.remove('hidden');
+        googleModal.classList.add('flex');
+      }
+
+      function closeGoogleModal() {
+        googleModal.classList.add('hidden');
+        googleModal.classList.remove('flex');
+      }
+
+      // Clean natural-language query into good Wikipedia search terms
+      function cleanQueryForSearch(q) {
+        return q
+          .replace(/^(what is|what are|who is|who was|who invented|who built|explain|tell me about|how does|how do|when was|where is|why did|define)\s+/i, '')
+          .replace(/\?+$/, '')
+          .trim() || q.trim();
+      }
+
+      // Fetch Wikipedia Search + Page Summary
+      async function fetchWikipediaData(question) {
+        const cleaned = cleanQueryForSearch(question);
+        const searchUrl = `https://en.wikipedia.org/w/api.php?action=query&list=search&format=json&origin=*&srlimit=3&srsearch=${encodeURIComponent(cleaned)}`;
+        const res = await fetch(searchUrl);
+        if (!res.ok) throw new Error('Wikipedia search failed');
+        const json = await res.json();
+        const hits = (json && json.query && json.query.search) || [];
+
+        if (!hits.length) {
+          return { found: false, query: cleaned, articles: [] };
+        }
+
+        const topHits = hits.slice(0, 2);
+        const articles = await Promise.all(topHits.map(async (hit) => {
+          const titleSlug = encodeURIComponent(hit.title.replace(/ /g, '_'));
+          try {
+            const sumRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${titleSlug}`);
+            if (sumRes.ok) {
+              const sumData = await sumRes.json();
+              return {
+                title: sumData.title || hit.title,
+                description: sumData.description || '',
+                extract: sumData.extract || hit.snippet.replace(/<[^>]+>/g, ''),
+                url: (sumData.content_urls && sumData.content_urls.desktop && sumData.content_urls.desktop.page) || `https://en.wikipedia.org/wiki/${titleSlug}`,
+                thumbnail: sumData.thumbnail ? sumData.thumbnail.source : null
+              };
+            }
+          } catch (e) {
+            // fallback to search snippet
+          }
+          return {
+            title: hit.title,
+            description: '',
+            extract: hit.snippet.replace(/<[^>]+>/g, '') + '...',
+            url: `https://en.wikipedia.org/wiki/${titleSlug}`,
+            thumbnail: null
+          };
+        }));
+
+        return { found: true, query: cleaned, articles };
+      }
+
+      // Fetch Google Custom Search (if API key configured) or build fallback
+      async function fetchGoogleData(question, wikiData) {
+        const googleSearchUrl = `https://www.google.com/search?q=${encodeURIComponent(question)}`;
+
+        if (state.account && state.account.apiKey && state.account.cx) {
+          try {
+            const apiUrl = `https://www.googleapis.com/customsearch/v1?key=${encodeURIComponent(state.account.apiKey)}&cx=${encodeURIComponent(state.account.cx)}&q=${encodeURIComponent(question)}&num=4`;
+            const res = await fetch(apiUrl);
+            if (res.ok) {
+              const data = await res.json();
+              const items = (data.items || []).map((item) => ({
+                title: item.title,
+                link: item.link,
+                displayLink: item.displayLink,
+                snippet: item.snippet
+              }));
+              if (items.length) {
+                return {
+                  mode: 'live_api',
+                  items,
+                  googleSearchUrl
+                };
+              }
+            }
+          } catch (e) {
+            // Fall back gracefully
+          }
+        }
+
+        const primaryWiki = wikiData && wikiData.found && wikiData.articles[0] ? wikiData.articles[0] : null;
+        return {
+          mode: 'instant_overview',
+          summary: primaryWiki ? primaryWiki.extract : `No direct summary found for "${question}".`,
+          googleSearchUrl
+        };
+      }
+
+      function renderLoadingBubble(question) {
+        const wrapper = document.createElement('div');
+        wrapper.id = 'loading-indicator';
+        wrapper.className = 'space-y-4 answer-enter';
+        wrapper.innerHTML = `
+          <div class="flex justify-end">
+            <div class="max-w-2xl px-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-100 text-sm font-medium">
+              ${escapeHtml(question)}
+            </div>
+          </div>
+          <div class="rounded-2xl gemini-glow-border p-5 space-y-4">
+            <div class="flex items-center gap-3">
+              <div class="w-7 h-7 rounded-xl bg-gradient-to-tr from-blue-600 via-violet-500 to-cyan-400 flex items-center justify-center shadow-md gemini-sparkle">
+                <svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 2L14.6 9.4L22 12L14.6 14.6L12 22L9.4 14.6L2 12L9.4 9.4L12 2Z"/>
+                </svg>
+              </div>
+              <span class="text-sm font-medium bg-gradient-to-r from-blue-400 via-violet-400 to-cyan-300 bg-clip-text text-transparent">
+                Klyro AI is thinking...
+              </span>
+            </div>
+            <div class="space-y-2.5">
+              <div class="h-3 rounded-full gemini-shimmer-bar w-11/12"></div>
+              <div class="h-3 rounded-full gemini-shimmer-bar w-4/5"></div>
+              <div class="h-3 rounded-full gemini-shimmer-bar w-2/3"></div>
+            </div>
+          </div>
+        `;
+        messagesList.appendChild(wrapper);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function copyTextToClipboard(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(() => {
+            showToast('Answer copied to clipboard');
+          }).catch(() => fallbackCopy(text));
+        } else {
+          fallbackCopy(text);
+        }
+      }
+
+      function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand('copy');
+          showToast('Answer copied to clipboard');
+        } catch (e) {
+          showToast('Unable to copy');
+        }
+        document.body.removeChild(ta);
+      }
+
+      function appendAnswerBlock(question, data) {
+        const { wikiData, googleData, sourceMode } = data;
+        const primaryWiki = wikiData && wikiData.found && wikiData.articles[0] ? wikiData.articles[0] : null;
+        const secondaryWiki = wikiData && wikiData.found && wikiData.articles[1] ? wikiData.articles[1] : null;
+
+        // Build clean, direct answer text only (no "Google Answer" or "Wikipedia Answer" headings)
+        let answerParagraphs = [];
+
+        if (sourceMode === 'google') {
+          if (googleData && googleData.mode === 'live_api' && googleData.items.length) {
+            answerParagraphs = googleData.items.map((item) => item.snippet).filter(Boolean);
+          } else if (primaryWiki) {
+            answerParagraphs = [primaryWiki.extract];
+          } else {
+            answerParagraphs = [`Could not find a direct answer for "${question}".`];
+          }
+        } else if (sourceMode === 'wikipedia') {
+          if (primaryWiki) {
+            answerParagraphs = [primaryWiki.extract];
+          } else {
+            answerParagraphs = [`Could not find a direct answer for "${question}".`];
+          }
+        } else {
+          if (googleData && googleData.mode === 'live_api' && googleData.items.length) {
+            answerParagraphs.push(googleData.items[0].snippet);
+            if (primaryWiki) {
+              answerParagraphs.push(primaryWiki.extract);
+            }
+          } else if (primaryWiki) {
+            answerParagraphs.push(primaryWiki.extract);
+            if (secondaryWiki && secondaryWiki.extract) {
+              answerParagraphs.push(secondaryWiki.extract);
+            }
+          } else if (!answerParagraphs.length) {
+            answerParagraphs.push(`Could not find a direct answer for "${question}".`);
+          }
+        }
+
+        const fullCopyText = answerParagraphs.join('\n\n');
+
+        const block = document.createElement('div');
+        block.className = 'space-y-4 answer-enter';
+
+        const userRow = `
+          <div class="flex justify-end">
+            <div class="max-w-2xl px-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-100 text-sm font-medium">
+              ${escapeHtml(question)}
+            </div>
+          </div>
+        `;
+
+        const answerHtml = `
+          <div class="rounded-2xl border border-zinc-800 bg-zinc-950 p-5 space-y-4">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-blue-600 flex items-center justify-center">
+                  <svg class="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3l1.912 5.813a2 2 0 001.275 1.275L21 12l-5.813 1.912a2 2 0 00-1.275 1.275L12 21l-1.912-5.813a2 2 0 00-1.275-1.275L3 12l5.813-1.912a2 2 0 001.275-1.275L12 3z"/></svg>
+                </div>
+                <span class="text-sm font-semibold text-white">Answer</span>
+              </div>
+              <button type="button" class="copy-answer-btn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-zinc-800 text-xs font-medium text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200 transition">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+
+            <div class="flex items-start gap-4">
+              <div class="space-y-3 flex-1 min-w-0">
+                ${answerParagraphs.map((p) => `<p class="text-sm text-zinc-200 leading-relaxed">${escapeHtml(p)}</p>`).join('')}
+              </div>
+              ${primaryWiki && primaryWiki.thumbnail ? `<img src="${escapeHtml(primaryWiki.thumbnail)}" alt="${escapeHtml(primaryWiki.title)}" class="hidden sm:block w-24 h-24 rounded-xl object-cover border border-zinc-800 shrink-0" />` : ''}
+            </div>
+
+
+
+            ${googleData && googleData.mode === 'live_api' && googleData.items.length ? `
+              <div class="pt-3 border-t border-zinc-800 space-y-2">
+                ${googleData.items.slice(0, 3).map((item) => `
+                  <a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="block text-xs text-blue-400 hover:underline truncate">
+                    ${escapeHtml(item.title)} &rarr;
+                  </a>
+                `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+
+        block.innerHTML = userRow + answerHtml;
+        messagesList.appendChild(block);
+
+        const copyBtn = block.querySelector('.copy-answer-btn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', () => copyTextToClipboard(fullCopyText));
+        }
+
+
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      }
+
+      function triggerSearchTapAnimation() {
+        sendBtn.classList.remove('btn-tap-burst');
+        void sendBtn.offsetWidth;
+        sendBtn.classList.add('btn-tap-burst');
+        setTimeout(() => sendBtn.classList.remove('btn-tap-burst'), 600);
+      }
+
+      sendBtn.addEventListener('pointerdown', () => {
+        if (!state.isLoading) triggerSearchTapAnimation();
+      });
+
+      async function submitQuestion(rawQuestion) {
+        const question = rawQuestion.trim();
+        if (!question || state.isLoading) return;
+
+        triggerSearchTapAnimation();
+        state.isLoading = true;
+        sendBtn.disabled = true;
+        questionInput.value = '';
+
+        welcomeScreen.classList.add('hidden');
+        messagesList.classList.remove('hidden');
+        homeBtn.classList.remove('hidden');
+        homeBtn.classList.add('inline-flex');
+        renderLoadingBubble(question);
+
+        askForm.classList.add('gemini-glow-border');
+        const minAnimDelay = new Promise((resolve) => setTimeout(resolve, 750));
+
+        let wikiData = { found: false, query: cleanQueryForSearch(question), articles: [] };
+        try {
+          wikiData = await fetchWikipediaData(question);
+        } catch (e) {
+          wikiData = { found: false, query: cleanQueryForSearch(question), articles: [] };
+        }
+
+        const googleData = await fetchGoogleData(question, wikiData);
+        await minAnimDelay;
+        askForm.classList.remove('gemini-glow-border');
+
+        const loadingEl = document.getElementById('loading-indicator');
+        if (loadingEl) loadingEl.remove();
+
+        const entryData = {
+          wikiData,
+          googleData,
+          sourceMode: state.sourceMode
+        };
+
+        appendAnswerBlock(question, entryData);
+
+        const historyItem = {
+          id: 'q_' + Date.now(),
+          question,
+          timestamp: Date.now(),
+          data: entryData
+        };
+        state.history.unshift(historyItem);
+        if (state.history.length > 25) state.history = state.history.slice(0, 25);
+        safeSetStorage(getHistoryKey(), state.history);
+        renderHistory();
+
+        state.isLoading = false;
+        sendBtn.disabled = false;
+        questionInput.focus();
+      }
+
+      // Event Listeners
+      openSidebarBtn.addEventListener('click', openSidebar);
+      closeSidebarBtn.addEventListener('click', closeSidebar);
+      sidebarBackdrop.addEventListener('click', closeSidebar);
+
+      function goHome() {
+        messagesList.innerHTML = '';
+        messagesList.classList.add('hidden');
+        welcomeScreen.classList.remove('hidden');
+        homeBtn.classList.add('hidden');
+        homeBtn.classList.remove('inline-flex');
+        questionInput.focus();
+        closeSidebar();
+      }
+
+      homeBtn.addEventListener('click', goHome);
+      sidebarHomeBtn.addEventListener('click', goHome);
+      newChatBtn.addEventListener('click', goHome);
+
+      function clearAllHistory() {
+        state.history = [];
+        safeSetStorage(getHistoryKey(), []);
+        renderHistory();
+        showToast('Search history cleared');
+      }
+
+      clearHistoryBtn.addEventListener('click', clearAllHistory);
+      modalClearHistoryBtn.addEventListener('click', clearAllHistory);
+
+      historyModalBtn.addEventListener('click', () => {
+        renderHistoryModal();
+        historyModal.classList.remove('hidden');
+        historyModal.classList.add('flex');
+      });
+
+      closeHistoryModalBtn.addEventListener('click', () => {
+        historyModal.classList.add('hidden');
+        historyModal.classList.remove('flex');
+      });
+
+      historyModal.addEventListener('click', (e) => {
+        if (e.target === historyModal) {
+          historyModal.classList.add('hidden');
+          historyModal.classList.remove('flex');
+        }
+      });
+
+
+
+      askForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        submitQuestion(questionInput.value);
+      });
+
+      googleSigninBtn.addEventListener('click', () => openGoogleModal(false));
+
+      googleProfileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profileDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!profileDropdown.contains(e.target) && !googleProfileBtn.contains(e.target)) {
+          profileDropdown.classList.add('hidden');
+        }
+      });
+
+      openApiSettingsBtn.addEventListener('click', () => openGoogleModal(true));
+      switchAccountBtn.addEventListener('click', () => openGoogleModal(false));
+
+      signoutBtn.addEventListener('click', () => {
+        state.account = null;
+        try {
+          localStorage.removeItem(STORAGE_KEYS.account);
+        } catch (e) {}
+        loadAccountAndHistory();
+        showToast('Signed out of Google Account');
+      });
+
+      closeModalBtn.addEventListener('click', closeGoogleModal);
+      cancelModalBtn.addEventListener('click', closeGoogleModal);
+
+      toggleAdvancedApi.addEventListener('click', () => {
+        advancedApiFields.classList.toggle('hidden');
+      });
+
+      googleAccountForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = googleNameInput.value.trim();
+        const email = googleEmailInput.value.trim();
+        if (!name || !email) return;
+
+        state.account = {
+          name,
+          email,
+          apiKey: googleApiKeyInput.value.trim(),
+          cx: googleCxInput.value.trim()
+        };
+        safeSetStorage(STORAGE_KEYS.account, state.account);
+        closeGoogleModal();
+        loadAccountAndHistory();
+        showToast(`Connected as ${email}`);
+      });
+
+      // Focus Soundscape (Web Audio API)
+      const soundBtn = document.getElementById('sound-btn');
+      const soundDropdown = document.getElementById('sound-dropdown');
+      const soundIconOff = document.getElementById('sound-icon-off');
+      const soundIconOn = document.getElementById('sound-icon-on');
+      const soundLabel = document.getElementById('sound-label');
+      const soundStatusBadge = document.getElementById('sound-status-badge');
+      const soundVolumeInput = document.getElementById('sound-volume');
+      const soundVolText = document.getElementById('sound-vol-text');
+      const soundModeBtns = document.querySelectorAll('.sound-mode-btn');
+
+      const soundEngine = {
+        ctx: null,
+        masterGain: null,
+        activeNodes: [],
+        mode: 'off',
+        volume: 0.35
+      };
+
+      function stopSoundNodes() {
+        soundEngine.activeNodes.forEach((n) => {
+          try { if (n.stop) n.stop(); } catch (e) {}
+          try { if (n.disconnect) n.disconnect(); } catch (e) {}
+        });
+        soundEngine.activeNodes = [];
+      }
+
+      function startSoundscape(mode) {
+        stopSoundNodes();
+        soundEngine.mode = mode;
+
+        if (mode === 'off') {
+          soundIconOff.classList.remove('hidden');
+          soundIconOn.classList.add('hidden');
+          soundLabel.textContent = 'Focus Sound';
+          soundStatusBadge.textContent = 'Off';
+          soundStatusBadge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-zinc-900 text-zinc-400';
+          updateSoundModeButtons(mode);
+          return;
+        }
+
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) {
+          showToast('Audio not supported in this browser');
+          return;
+        }
+        if (!soundEngine.ctx) {
+          soundEngine.ctx = new AudioCtx();
+        }
+        if (soundEngine.ctx.state === 'suspended') {
+          soundEngine.ctx.resume();
+        }
+
+        const ctx = soundEngine.ctx;
+        const master = ctx.createGain();
+        master.gain.value = soundEngine.volume * 0.4;
+        master.connect(ctx.destination);
+        soundEngine.masterGain = master;
+        soundEngine.activeNodes.push(master);
+
+        if (mode === 'rain' || mode === 'whitenoise') {
+          const bufferSize = ctx.sampleRate * 2;
+          const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+          const data = buffer.getChannelData(0);
+          let lastOut = 0;
+          for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            if (mode === 'rain') {
+              data[i] = (lastOut + 0.04 * white) / 1.04;
+              lastOut = data[i];
+              data[i] *= 2.8;
+            } else {
+              data[i] = white * 0.35;
+            }
+          }
+          const noise = ctx.createBufferSource();
+          noise.buffer = buffer;
+          noise.loop = true;
+
+          const filter = ctx.createBiquadFilter();
+          filter.type = mode === 'rain' ? 'bandpass' : 'lowpass';
+          filter.frequency.value = mode === 'rain' ? 900 : 2400;
+          filter.Q.value = mode === 'rain' ? 0.6 : 0.7;
+
+          noise.connect(filter);
+          filter.connect(master);
+          noise.start();
+          soundEngine.activeNodes.push(noise, filter);
+        } else if (mode === 'pulse') {
+          const osc1 = ctx.createOscillator();
+          const osc2 = ctx.createOscillator();
+          const lfo = ctx.createOscillator();
+          const lfoGain = ctx.createGain();
+
+          osc1.type = 'sine';
+          osc1.frequency.value = 174;
+          osc2.type = 'sine';
+          osc2.frequency.value = 261.63;
+
+          lfo.type = 'sine';
+          lfo.frequency.value = 0.25;
+          lfoGain.gain.value = 0.12;
+
+          const subGain = ctx.createGain();
+          subGain.gain.value = 0.22;
+
+          lfo.connect(lfoGain);
+          lfoGain.connect(subGain.gain);
+
+          osc1.connect(subGain);
+          osc2.connect(subGain);
+          subGain.connect(master);
+
+          osc1.start();
+          osc2.start();
+          lfo.start();
+          soundEngine.activeNodes.push(osc1, osc2, lfo, lfoGain, subGain);
+        }
+
+        const labelMap = { rain: 'Rain', whitenoise: 'White Noise', pulse: 'Soft Pulse' };
+        soundIconOff.classList.add('hidden');
+        soundIconOn.classList.remove('hidden');
+        soundLabel.textContent = labelMap[mode];
+        soundStatusBadge.textContent = labelMap[mode];
+        soundStatusBadge.className = 'text-[11px] px-2 py-0.5 rounded-full bg-blue-950 text-blue-400';
+        updateSoundModeButtons(mode);
+      }
+
+      function updateSoundModeButtons(activeMode) {
+        soundModeBtns.forEach((btn) => {
+          const isMatch = btn.getAttribute('data-sound') === activeMode;
+          btn.className = isMatch
+            ? 'sound-mode-btn px-2.5 py-2 rounded-xl border border-blue-500/60 bg-blue-600/20 text-xs font-medium text-white transition'
+            : 'sound-mode-btn px-2.5 py-2 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-800 text-xs font-medium text-zinc-300 transition';
+        });
+      }
+
+      soundBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        profileDropdown.classList.add('hidden');
+        soundDropdown.classList.toggle('hidden');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!soundDropdown.contains(e.target) && !soundBtn.contains(e.target)) {
+          soundDropdown.classList.add('hidden');
+        }
+      });
+
+      soundModeBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          startSoundscape(btn.getAttribute('data-sound'));
+        });
+      });
+
+      soundVolumeInput.addEventListener('input', () => {
+        const val = Number(soundVolumeInput.value);
+        soundEngine.volume = val / 100;
+        soundVolText.textContent = val + '%';
+        if (soundEngine.masterGain) {
+          soundEngine.masterGain.gain.value = soundEngine.volume * 0.4;
+        }
+      });
+
+      // Initialize
+      loadAccountAndHistory();
+    })();
+  </script>
+</body>
+</html>
